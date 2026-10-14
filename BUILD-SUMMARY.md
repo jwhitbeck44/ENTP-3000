@@ -1,12 +1,12 @@
 # Build summary: Manifesto Teleprompter
 
 ## Status
-The page is built and tested locally. It is NOT published. The session could not create a GitHub repository (the GitHub integration returned 403 "Resource not accessible by integration" on repo creation, and the gh CLI is restricted to this session's repository). Publishing steps are at the bottom.
+Built and tested locally. Published from this repo (`ENTP-3000`, branch `main`, folder root) with GitHub Pages.
 
-## Intended live URL
+## Live URL
 https://jwhitbeck44.github.io/ENTP-3000/
 
-This URL is predicted from the repo name and Pages convention. It does not work until the repo exists and Pages is on. `qr.png` encodes this URL.
+`qr.png` encodes this URL.
 
 ## Files
 - `index.html`: the whole app. Inline CSS and JS, no libraries, no outside requests, no em dashes, no mention of AI.
@@ -40,9 +40,3 @@ This URL is predicted from the repo name and Pages convention. It does not work 
 - Pause stops the scroll and timer but does not pause the recording.
 - Browsers may show a permission prompt the first time Record is used; students must allow it.
 - `kill-list-generator` has no BUILD-SUMMARY.md. It is a public repo with a single `index.html` at the root and is live on GitHub Pages, so the same layout was used here.
-
-## To publish (about two minutes)
-1. On GitHub create a public repo named `manifesto-teleprompter` under jwhitbeck44.
-2. Put `index.html`, `qr.png` and `BUILD-SUMMARY.md` at the repo root on `main`.
-3. Settings, Pages, Source: Deploy from a branch, `main`, `/ (root)`.
-4. Open the URL above and confirm the page loads, then project `qr.png`.
