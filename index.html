@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Manifesto Teleprompter</title>
+<style>
+:root {
+  --bg: #0b0b0c;
+  --panel: #17171a;
+  --line: #3a3a40;
+  --text: #ffffff;
+  --muted: #c9c9cf;
+  --accent: #ffd60a;
+  --accent-ink: #000000;
+  --rec: #b3261e;
+  --green: #3ddc84;
+  --red: #ff5a5a;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+button, textarea, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Setup screen */
+#setup {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
+}
+h1 { margin: 0 0 6px; font-size: clamp(1.6rem, 6vw, 2.4rem); line-height: 1.15; }
+.tag { margin: 0 0 22px; color: var(--muted); font-size: 1.05rem; }
+label.field { display: block; font-weight: 600; margin-bottom: 8px; }
+textarea#script {
+  display: block;
+  width: 100%;
+  min-height: 30vh;
+  padding: 14px;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+textarea#script:focus { border-color: var(--accent); outline: none; }
+.count { margin: 8px 0 18px; color: var(--muted); font-size: 0.95rem; min-height: 1.3em; }
+fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+legend { font-weight: 600; padding: 0; margin-bottom: 8px; }
+.choices { display: grid; gap: 10px; }
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.choice:has(input:checked) { border-color: var(--accent); }
+.choice:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+.choice input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); flex: none; }
+.choice b { display: block; }
+.choice span { display: block; color: var(--muted); font-size: 0.92rem; }
+.msg { min-height: 1.4em; margin: 0 0 10px; color: var(--muted); }
+.btn {
+  min-height: 56px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); width: 100%; font-size: 1.3rem; min-height: 64px; }
+.btn.rec { background: var(--rec); border-color: var(--rec); color: #fff; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Teleprompter screen */
+#prompter {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+.top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  flex: none;
+}
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(2rem, 9vw, 3.6rem);
+  line-height: 1;
+  color: var(--text);
+}
+.timer.t-green { color: var(--green); }
+.timer.t-red { color: var(--red); }
+.note { margin-top: 4px; font-size: 0.8rem; color: var(--muted); }
+.preview-slot { display: flex; justify-content: center; }
+#preview {
+  width: clamp(104px, 26vw, 200px);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #111;
+  border: 2px solid var(--rec);
+  border-radius: 10px;
+  transform: scaleX(-1);
+}
+.rec-wrap { text-align: right; }
+.rec-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--rec);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.camMsg { margin: 0; padding: 0 12px 6px; min-height: 1.3em; font-size: 0.95rem; color: var(--muted); flex: none; }
+.camMsg a { color: var(--accent); font-weight: 700; }
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+}
+.text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 0 6vw;
+  font-size: clamp(1.7rem, 6.2vw, 3.2rem);
+  line-height: 1.45;
+  font-weight: 600;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  will-change: transform;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.paused-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+.controls {
+  flex: none;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+.row { display: flex; gap: 10px; }
+.row .btn { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; }
+.speed { display: flex; align-items: center; gap: 12px; }
+.speed label { font-weight: 600; white-space: nowrap; min-width: 5.5em; }
+.speed input[type=range] { flex: 1; min-width: 0; height: 44px; accent-color: var(--accent); }
+.hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 600px) { .hint { display: none; } }
+</style>
+</head>
+<body>
+
+<main id="setup">
+  <h1>Manifesto Teleprompter</h1>
+  <p class="tag">Your words. Your character. Nothing leaves your device.</p>
+
+  <label class="field" for="script">Paste your script</label>
+  <textarea id="script" placeholder="Paste or type your manifesto here." autocomplete="off" spellcheck="true"></textarea>
+  <div class="count" id="count" aria-live="polite"></div>
+
+  <fieldset>
+    <legend>Timer mode</legend>
+    <div class="choices">
+      <label class="choice">
+        <input type="radio" name="mode" value="rehearsal">
+        <div><b>60-second rehearsal</b><span>The timer turns red at 1:00.</span></div>
+      </label>
+      <label class="choice">
+        <input type="radio" name="mode" value="full" checked>
+        <div><b>Full manifesto</b><span>White under 3:00, green from 3:00 to 5:00, red after 5:00.</span></div>
+      </label>
+    </div>
+  </fieldset>
+
+  <p class="msg" id="setupMsg" role="status"></p>
+  <button class="btn primary" id="start" type="button">Start</button>
+</main>
+
+<section id="prompter" hidden aria-label="Teleprompter">
+  <div class="top">
+    <div>
+      <div id="timer" class="timer" role="timer">0:00</div>
+      <div id="timerNote" class="note"></div>
+    </div>
+    <div class="preview-slot"><video id="preview" muted playsinline hidden></video></div>
+    <div class="rec-wrap"><span id="recBadge" class="rec-badge" hidden>REC</span></div>
+  </div>
+  <p id="camMsg" class="camMsg" role="status"></p>
+  <div class="stage" id="stage">
+    <div class="text" id="text"></div>
+    <div class="paused-tag" id="pausedTag" hidden>Paused. Tap the screen or press space to continue.</div>
+  </div>
+  <div class="controls">
+    <div class="speed">
+      <label for="speed">Speed <span id="speedVal">25</span></label>
+      <input type="range" id="speed" min="5" max="100" step="1" value="25">
+    </div>
+    <div class="row">
+      <button class="btn" id="pauseBtn" type="button">Pause</button>
+      <button class="btn rec" id="recBtn" type="button">Record</button>
+      <button class="btn" id="exitBtn" type="button">Back</button>
+    </div>
+    <p class="hint">Space or a tap pauses. Up and down arrow keys change the speed.</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var scriptEl = $('script'), countEl = $('count'), setupMsg = $('setupMsg');
+  var setupEl = $('setup'), prompterEl = $('prompter');
+  var stage = $('stage'), textEl = $('text'), timerEl = $('timer'), noteEl = $('timerNote');
+  var pausedTag = $('pausedTag'), speedEl = $('speed'), speedVal = $('speedVal');
+  var pauseBtn = $('pauseBtn'), recBtn = $('recBtn'), exitBtn = $('exitBtn');
+  var preview = $('preview'), recBadge = $('recBadge'), camMsg = $('camMsg');
+
+  var BASE_FONT = 40;          // speed is stored as pixels per second at a 40px font
+  var state = {
+    active: false, running: false, mode: 'full',
+    elapsed: 0, y: 0, startY: 0, minY: 0, speed: 25, last: 0, raf: 0
+  };
+  var wakeLock = null;
+  var rec = { stream: null, recorder: null, chunks: [], busy: false, url: null };
+
+  /* ---------- Setup screen ---------- */
+  try { scriptEl.value = sessionStorage.getItem('mt-script') || ''; } catch (e) {}
+
+  function updateCount() {
+    var words = (scriptEl.value.trim().match(/\S+/g) || []).length;
+    if (!words) { countEl.textContent = ''; return; }
+    var secs = Math.round(words / 140 * 60);
+    countEl.textContent = words + ' words. About ' + fmt(secs) + ' read aloud at 140 words per minute.';
+  }
+  scriptEl.addEventListener('input', function () {
+    updateCount();
+    setupMsg.textContent = '';
+    try { sessionStorage.setItem('mt-script', scriptEl.value); } catch (e) {}
+  });
+  updateCount();
+
+  function fmt(total) {
+    var m = Math.floor(total / 60), s = total % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  $('start').addEventListener('click', function () {
+    var script = scriptEl.value.trim();
+    if (!script) {
+      setupMsg.textContent = 'Paste your script in the box first.';
+      scriptEl.focus();
+      return;
+    }
+    state.mode = document.querySelector('input[name=mode]:checked').value;
+    textEl.textContent = script;
+    setupEl.hidden = true;
+    prompterEl.hidden = false;
+    state.active = true;
+    camMsg.textContent = '';
+    layout();
+    restart();
+    requestWake();
+    state.last = performance.now();
+    state.raf = requestAnimationFrame(frame);
+  });
+
+  /* ---------- Teleprompter ---------- */
+  function layout() {
+    var fontPx = parseFloat(getComputedStyle(textEl).fontSize) || BASE_FONT;
+    var lineH = parseFloat(getComputedStyle(textEl).lineHeight) || fontPx * 1.45;
+    state.startY = Math.round(stage.clientHeight * 0.2);
+    state.minY = state.startY - Math.max(0, textEl.offsetHeight - lineH);
+    state.scale = fontPx / BASE_FONT;
+    state.y = Math.max(state.minY, Math.min(state.startY, state.y));
+    draw();
+  }
+  function restart() {
+    state.elapsed = 0;
+    state.y = state.startY;
+    setRunning(true);
+    draw();
+  }
+  function setRunning(on) {
+    state.running = on;
+    pausedTag.hidden = on;
+    pauseBtn.textContent = on ? 'Pause' : 'Resume';
+  }
+  function draw() {
+    textEl.style.transform = 'translate3d(0,' + state.y.toFixed(2) + 'px,0)';
+    renderTimer();
+  }
+  function frame(t) {
+    state.raf = requestAnimationFrame(frame);
+    var dtMs = t - state.last;
+    state.last = t;
+    if (!state.running || dtMs <= 0) return;
+    state.elapsed += dtMs / 1000;
+    var dt = Math.min(dtMs, 100) / 1000;
+    if (state.y > state.minY) {
+      state.y = Math.max(state.minY, state.y - state.speed * state.scale * dt);
+    }
+    draw();
+  }
+  function renderTimer() {
+    var s = Math.floor(state.elapsed), cls = '', note = '';
+    if (state.mode === 'rehearsal') {
+      if (s >= 60) { cls = 't-red'; note = 'Rehearsal. Past 1:00.'; }
+      else { note = 'Rehearsal. Stop at 1:00.'; }
+    } else {
+      if (s > 300) { cls = 't-red'; note = 'Full manifesto. Past 5:00.'; }
+      else if (s >= 180) { cls = 't-green'; note = 'Full manifesto. In the 3:00 to 5:00 range.'; }
+      else { note = 'Full manifesto. Aim for 3:00 to 5:00.'; }
+    }
+    timerEl.textContent = fmt(s);
+    if (timerEl.className !== 'timer ' + cls) timerEl.className = 'timer ' + cls;
+    if (noteEl.textContent !== note) noteEl.textContent = note;
+  }
+
+  function togglePause() { setRunning(!state.running); }
+  stage.addEventListener('click', togglePause);
+  pauseBtn.addEventListener('click', togglePause);
+
+  function setSpeed(v) {
+    state.speed = Math.max(5, Math.min(100, v));
+    speedEl.value = state.speed;
+    speedVal.textContent = state.speed;
+  }
+  speedEl.addEventListener('input', function () { setSpeed(Number(speedEl.value)); });
+
+  document.addEventListener('keydown', function (e) {
+    if (!state.active) return;
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      if (!e.repeat) togglePause();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSpeed(state.speed + 2);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSpeed(state.speed - 2);
+    }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (state.active && (e.key === ' ' || e.key === 'Spacebar')) e.preventDefault();
+  });
+  window.addEventListener('resize', function () { if (state.active) layout(); });
+
+  exitBtn.addEventListener('click', function () {
+    var wasRecording = !!rec.recorder;
+    if (wasRecording) stopRecording();
+    state.active = false;
+    state.running = false;
+    cancelAnimationFrame(state.raf);
+    releaseWake();
+    prompterEl.hidden = true;
+    setupEl.hidden = false;
+    scriptEl.focus();
+  });
+
+  function requestWake() {
+    try {
+      if (navigator.wakeLock) {
+        navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }, function () {});
+      }
+    } catch (e) {}
+  }
+  function releaseWake() {
+    try { if (wakeLock) wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (state.active && document.visibilityState === 'visible') requestWake();
+  });
+
+  /* ---------- Recording ---------- */
+  function say(text, linkEl) {
+    camMsg.textContent = text;
+    if (linkEl) { camMsg.appendChild(document.createTextNode(' ')); camMsg.appendChild(linkEl); }
+  }
+  function pickType() {
+    var list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4',
+                'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    if (typeof MediaRecorder.isTypeSupported !== 'function') return '';
+    for (var i = 0; i < list.length; i++) if (MediaRecorder.isTypeSupported(list[i])) return list[i];
+    return '';
+  }
+  function dateStamp() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  recBtn.addEventListener('click', function () {
+    if (rec.recorder) stopRecording(); else startRecording();
+  });
+
+  function startRecording() {
+    if (rec.busy) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      say('This browser cannot record video, so the teleprompter is running without recording.');
+      return;
+    }
+    rec.busy = true;
+    recBtn.disabled = true;
+    say('Waiting for camera permission.');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true }).then(function (stream) {
+      var type = pickType(), recorder;
+      try {
+        recorder = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+      } catch (e) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        throw e;
+      }
+      if (rec.url) { URL.revokeObjectURL(rec.url); rec.url = null; }
+      rec.stream = stream;
+      rec.recorder = recorder;
+      rec.chunks = [];
+      recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size) rec.chunks.push(ev.data); };
+      recorder.onstop = function () { finishRecording(recorder); };
+      recorder.onerror = function () { say('Recording stopped because of an error.'); };
+      preview.srcObject = stream;
+      preview.hidden = false;
+      var p = preview.play(); if (p && p.catch) p.catch(function () {});
+      recBadge.hidden = false;
+      recBtn.textContent = 'Stop';
+      say('');
+      layout();
+      restart();
+      recorder.start(1000);
+    }).catch(function () {
+      say('This browser blocked the camera or microphone, so the teleprompter is running without recording.');
+    }).then(function () {
+      rec.busy = false;
+      recBtn.disabled = false;
+    });
+  }
+
+  function stopRecording() {
+    var r = rec.recorder;
+    if (!r) return;
+    rec.recorder = null;
+    if (r.state !== 'inactive') r.stop(); else finishRecording(r);
+    if (rec.stream) rec.stream.getTracks().forEach(function (t) { t.stop(); });
+    rec.stream = null;
+    preview.srcObject = null;
+    preview.hidden = true;
+    recBadge.hidden = true;
+    recBtn.textContent = 'Record';
+    setRunning(false);
+  }
+
+  function finishRecording(recorder) {
+    var chunks = rec.chunks;
+    rec.chunks = [];
+    var type = (recorder.mimeType || '').split(';')[0] || 'video/webm';
+    var blob = new Blob(chunks, { type: type });
+    if (!blob.size) { say('Nothing was recorded.'); return; }
+    var name = 'manifesto-' + dateStamp() + (type.indexOf('mp4') !== -1 ? '.mp4' : '.webm');
+    rec.url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = rec.url;
+    a.download = name;
+    a.textContent = 'Save ' + name + ' again';
+    document.body.appendChild(a);
+    a.style.display = 'none';
+    a.click();
+    document.body.removeChild(a);
+    a.style.display = '';
+    say('Saved as ' + name + '. If nothing downloaded, use this link:', a);
+  }
+})();
+</script>
+</body>
+</html>
